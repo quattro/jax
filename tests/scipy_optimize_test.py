@@ -102,5 +102,56 @@ class TestBFGS(jtu.JaxTestCase):
       jax.scipy.optimize.minimize(f, jnp.ones(2), args=45, method='BFGS')
 
 
+class TestTrustRegionCG(jtu.JaxTestCase):
+
+  @parameterized.named_parameters(jtu.cases_from_list(
+    {"testcase_name": "_func={}_maxiter={}".format(func_and_init[0].__name__, maxiter),
+     "maxiter": maxiter, "func_and_init": func_and_init}
+    for maxiter in [None]
+    for func_and_init in [(rosenbrock, np.zeros(2)),
+                          (himmelblau, np.zeros(2)),
+                          (matyas, np.ones(2) * 6.),
+                          (eggholder, np.ones(2) * 100.)]))
+  def test_minimize(self, maxiter, func_and_init):
+
+    func, x0 = func_and_init
+
+    @jit
+    def min_op(x0):
+      result = jax.scipy.optimize.minimize(
+          func(jnp),
+          x0,
+          method='trust-ncg',
+          options=dict(maxiter=maxiter, gtol=1e-6, initial_trust_radius=1., max_trust_radius=1000.),
+      )
+      return result.x
+
+    def scipy_min_op(x0):
+      fun = func(jnp) # this is using jax primitives to perform computation; workaround for needing gradients.
+      result = scipy.optimize.minimize(
+          fun,
+          x0,
+          jac=jax.grad(fun),
+          hess=jax.hessian(fun),
+          method='trust-ncg'
+      )
+      return result.x
+
+    jax_res = min_op(x0)
+    scipy_res = scipy_min_op(x0)
+    self.assertAllClose(scipy_res, jax_res, atol=2e-5, check_dtypes=False)
+
+  def test_bad_trust_name(self):
+    A = jnp.eye(2) * 1e4
+    def f(x):
+      return jnp.mean((A @ x) ** 2)
+    with self.assertRaisesRegex(ValueError, "Method .* not recognized"):
+      jax.scipy.optimize.minimize(f, jnp.ones(2), method='trust-foo')
+
+
+if __name__ == "__main__":
+  absltest.main()
+
+
 if __name__ == "__main__":
   absltest.main()

@@ -13,6 +13,7 @@
 # limitations under the License.
 from typing import Any, Callable, Mapping, Optional, Tuple, Union
 from .bfgs import minimize_bfgs
+from .trust_region import minimize_trust_region
 from typing import NamedTuple
 import jax.numpy as jnp
 
@@ -109,6 +110,18 @@ def minimize(
                            hess_inv=results.H_k,
                            nfev=results.nfev,
                            njev=results.ngev,
+                           nit=results.k)
+  elif "trust" in method:
+    results = minimize_trust_region(fun_with_args, x0, method=method, **options)
+    success = results.converged & results.good_approx
+    return OptimizeResults(x=results.x_k,
+                           success=success,
+                           status=results.status,
+                           fun=results.f_k,
+                           jac=results.g_k,
+                           hess_inv=None,
+                           nfev=None,
+                           njev=None,
                            nit=results.k)
 
   raise ValueError("Method {} not recognized".format(method))
