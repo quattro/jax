@@ -201,14 +201,11 @@ def CGSteihaugSubproblem(
     # update the state for the next iteration
     beta_next = r_next_squared / r_squared
     d_next = -r_next + beta_next * iterp.d
-    z = z_next
-    r = r_next
-    d = d_next
 
     state = _CGSteihaugState(
-      z=z,
-      r=r,
-      d=d,
+      z=z_next,
+      r=r_next,
+      d=d_next,
       step=result.step,
       hits_boundary=result.hits_boundary,
       converged=result.converged
